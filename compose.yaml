@@ -1,0 +1,15 @@
+services:
+  careerforge:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      APIFY_TOKEN: ${APIFY_TOKEN:-}
+      APIFY_ACTOR_ID: ${APIFY_ACTOR_ID:-2rJKkhh7vjpX7pvjg}
+      APIFY_MAX_CHARGE_USD: ${APIFY_MAX_CHARGE_USD:-1}
+      DATABASE_PATH: /app/data/careerforge.sqlite3
+    volumes:
+      - careerforge-data:/app/data
+    restart: unless-stopped
+volumes:
+  careerforge-data:

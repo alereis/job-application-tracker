@@ -1,0 +1,1945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CareerForge - Job Application Tracker</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .kanban-col {
+      min-height: calc(100vh - 280px);
+    }
+    .dragging {
+      opacity: 0.45;
+      transform: scale(0.98);
+    }
+    .drag-over {
+      background-color: rgba(99, 102, 241, 0.08);
+      border: 2px dashed #6366f1;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="w-full px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo & Branding -->
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-100">
+            <i class="fa-solid fa-briefcase text-lg"></i>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              CareerForge
+              <span class="text-xs px-2 py-0.5 font-medium rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">Tracker</span>
+            </h1>
+            <p class="text-xs text-slate-500 hidden sm:block">Pipeline & Application Management</p>
+          </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="flex items-center space-x-1 sm:space-x-2 bg-slate-100 p-1 rounded-xl">
+          <button onclick="switchView('kanban')" id="tab-kanban" class="nav-tab active-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 bg-white text-indigo-600 shadow-sm transition">
+            <i class="fa-solid fa-columns"></i>
+            <span>Kanban</span>
+          </button>
+          <button onclick="switchView('sheet')" id="tab-sheet" class="nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 transition flex items-center gap-2">
+            <i class="fa-solid fa-table"></i>
+            <span>Data Sheet</span>
+          </button>
+          <button onclick="switchView('dashboard')" id="tab-dashboard" class="nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 transition flex items-center gap-2">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span class="hidden md:inline">Dashboard</span>
+          </button>
+        </nav>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center space-x-2">
+          <button onclick="openGoogleSyncModal()" class="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs sm:text-sm font-semibold rounded-xl flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-file-spreadsheet text-emerald-600"></i>
+            <span class="hidden sm:inline">Google Sync</span>
+            <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-slate-300 ml-0.5" title="Google Sheet Status"></span>
+          </button>
+          <button onclick="openNewModal()" class="px-3 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-medium rounded-xl shadow-sm shadow-indigo-200 flex items-center gap-2 transition focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <i class="fa-solid fa-plus text-xs"></i>
+            <span class="font-semibold">Add Application</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- Global Flash Notification Toast Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- VIEW 1: KANBAN BOARD -->
+    <div id="view-kanban" class="space-y-4">
+      <!-- Board Top Bar -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
+        <div class="flex items-center gap-3">
+          <h2 class="text-xl font-bold text-slate-900">Application Pipeline</h2>
+          <span id="kanban-total-badge" class="text-xs bg-slate-200 text-slate-700 font-semibold px-2.5 py-0.5 rounded-full">0 total</span>
+        </div>
+        <!-- Search and Quick Filter in Board -->
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="relative w-full sm:w-64">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+            <input type="text" id="kanban-search" oninput="renderKanban()" placeholder="Search title, company, skills..." class="w-full pl-9 pr-3 py-1.5 text-xs sm:text-sm bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <button onclick="openNewModal()" class="text-xs sm:text-sm bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs font-medium">
+            <i class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i> Quick Fill
+          </button>
+        </div>
+      </div>
+
+      <!-- Horizontal Swimlane Scroll Area -->
+      <div class="overflow-x-auto pb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 min-w-[1100px]">
+          
+          <!-- Column: Wishlist / Saved -->
+          <div class="flex flex-col bg-slate-100/80 rounded-2xl p-3 border border-slate-200/80 kanban-column" data-status="Wishlist">
+            <div class="flex items-center justify-between mb-3 px-1">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Wishlist</span>
+              </div>
+              <span id="count-Wishlist" class="text-xs font-semibold px-2 py-0.5 bg-white text-slate-600 rounded-full border border-slate-200">0</span>
+            </div>
+            <div id="col-Wishlist" class="kanban-col space-y-3 flex-1 flex flex-col" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'Wishlist')">
+              <!-- Cards dynamically rendered here -->
+            </div>
+          </div>
+
+          <!-- Column: Applied -->
+          <div class="flex flex-col bg-slate-100/80 rounded-2xl p-3 border border-slate-200/80 kanban-column" data-status="Applied">
+            <div class="flex items-center justify-between mb-3 px-1">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Applied</span>
+              </div>
+              <span id="count-Applied" class="text-xs font-semibold px-2 py-0.5 bg-white text-slate-600 rounded-full border border-slate-200">0</span>
+            </div>
+            <div id="col-Applied" class="kanban-col space-y-3 flex-1 flex flex-col" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'Applied')">
+              <!-- Cards -->
+            </div>
+          </div>
+
+          <!-- Column: Screening -->
+          <div class="flex flex-col bg-slate-100/80 rounded-2xl p-3 border border-slate-200/80 kanban-column" data-status="Screening">
+            <div class="flex items-center justify-between mb-3 px-1">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Screening</span>
+              </div>
+              <span id="count-Screening" class="text-xs font-semibold px-2 py-0.5 bg-white text-slate-600 rounded-full border border-slate-200">0</span>
+            </div>
+            <div id="col-Screening" class="kanban-col space-y-3 flex-1 flex flex-col" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'Screening')">
+              <!-- Cards -->
+            </div>
+          </div>
+
+          <!-- Column: Interviewing -->
+          <div class="flex flex-col bg-slate-100/80 rounded-2xl p-3 border border-slate-200/80 kanban-column" data-status="Interviewing">
+            <div class="flex items-center justify-between mb-3 px-1">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Interviewing</span>
+              </div>
+              <span id="count-Interviewing" class="text-xs font-semibold px-2 py-0.5 bg-white text-slate-600 rounded-full border border-slate-200">0</span>
+            </div>
+            <div id="col-Interviewing" class="kanban-col space-y-3 flex-1 flex flex-col" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'Interviewing')">
+              <!-- Cards -->
+            </div>
+          </div>
+
+          <!-- Column: Offer -->
+          <div class="flex flex-col bg-slate-100/80 rounded-2xl p-3 border border-slate-200/80 kanban-column" data-status="Offer">
+            <div class="flex items-center justify-between mb-3 px-1">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Offer</span>
+              </div>
+              <span id="count-Offer" class="text-xs font-semibold px-2 py-0.5 bg-white text-slate-600 rounded-full border border-slate-200">0</span>
+            </div>
+            <div id="col-Offer" class="kanban-col space-y-3 flex-1 flex flex-col" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'Offer')">
+              <!-- Cards -->
+            </div>
+          </div>
+
+          <!-- Column: Rejected -->
+          <div class="flex flex-col bg-slate-100/80 rounded-2xl p-3 border border-slate-200/80 kanban-column" data-status="Rejected">
+            <div class="flex items-center justify-between mb-3 px-1">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Archived / Rejected</span>
+              </div>
+              <span id="count-Rejected" class="text-xs font-semibold px-2 py-0.5 bg-white text-slate-600 rounded-full border border-slate-200">0</span>
+            </div>
+            <div id="col-Rejected" class="kanban-col space-y-3 flex-1 flex flex-col" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'Rejected')">
+              <!-- Cards -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div id="view-sheet" class="hidden space-y-4">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">Application Master Sheet</h2>
+          <p class="text-xs text-slate-500">Detailed records, links, stages, and salary details</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Filter by Status -->
+          <select id="sheet-status-filter" onchange="renderSheet()" class="text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="ALL">All Statuses</option>
+            <option value="Wishlist">Wishlist</option>
+            <option value="Applied">Applied</option>
+            <option value="Screening">Screening</option>
+            <option value="Interviewing">Interviewing</option>
+            <option value="Offer">Offer</option>
+            <option value="Rejected">Archived / Rejected</option>
+          </select>
+          <!-- Search in sheet -->
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+            <input type="text" id="sheet-search" oninput="renderSheet()" placeholder="Search all fields..." class="pl-9 pr-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48 sm:w-60" />
+          </div>
+          <!-- Export CSV -->
+          <button onclick="exportLegacyJSON()" class="px-3 py-2 bg-slate-100 rounded-xl text-xs font-medium">JSON Backup</button>
+          <button onclick="exportToCSV()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-xl flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-file-arrow-down text-slate-500"></i> Export CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Table Container -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs sm:text-sm divide-y divide-slate-200">
+            <thead class="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+              <tr>
+                <th class="py-3 px-4 cursor-pointer hover:bg-slate-100 transition" onclick="sortSheet('jobTitle')">Job Title <i class="fa-solid fa-sort text-slate-300 ml-1"></i></th>
+                <th class="py-3 px-4 cursor-pointer hover:bg-slate-100 transition" onclick="sortSheet('company')">Company <i class="fa-solid fa-sort text-slate-300 ml-1"></i></th>
+                <th class="py-3 px-4 cursor-pointer hover:bg-slate-100 transition" onclick="sortSheet('status')">Status <i class="fa-solid fa-sort text-slate-300 ml-1"></i></th>
+                <th class="py-3 px-4 cursor-pointer hover:bg-slate-100 transition" onclick="sortSheet('dateApplied')">Date Added/Applied <i class="fa-solid fa-sort text-slate-300 ml-1"></i></th>
+                <th class="py-3 px-4">Location / Work Mode</th>
+                <th class="py-3 px-4">Salary Range</th>
+                <th class="py-3 px-4">Origin / Job Link</th>
+                <th class="py-3 px-4">Company Website</th>
+                <th class="py-3 px-4">Next Step</th>
+                <th class="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sheet-table-body" class="divide-y divide-slate-100 text-slate-700">
+              <!-- Rows inserted dynamically -->
+            </tbody>
+          </table>
+        </div>
+        <!-- Table Empty State if zero results -->
+        <div id="sheet-empty" class="hidden py-12 text-center text-slate-400">
+          <i class="fa-regular fa-folder-open text-3xl mb-2 text-slate-300"></i>
+          <p class="font-medium">No job records matching current filters.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-dashboard" class="hidden space-y-6">
+      <!-- Metric Cards Grid -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Tracked</p>
+            <h3 id="stat-total" class="text-2xl font-black text-slate-900 mt-1">0</h3>
+            <p class="text-xs text-indigo-600 mt-1 font-medium flex items-center gap-1">
+              <i class="fa-solid fa-list-check"></i> Overall entries
+            </p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-briefcase"></i>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">In Progress</p>
+            <h3 id="stat-active" class="text-2xl font-black text-slate-900 mt-1">0</h3>
+            <p class="text-xs text-amber-600 mt-1 font-medium flex items-center gap-1">
+              <i class="fa-regular fa-clock"></i> Active interviews & screens
+            </p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-comments"></i>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Offers Received</p>
+            <h3 id="stat-offers" class="text-2xl font-black text-emerald-600 mt-1">0</h3>
+            <p class="text-xs text-emerald-600 mt-1 font-medium flex items-center gap-1">
+              <i class="fa-solid fa-trophy"></i> Ready to evaluate
+            </p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-award"></i>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Response Rate</p>
+            <h3 id="stat-rate" class="text-2xl font-black text-slate-900 mt-1">0%</h3>
+            <p class="text-xs text-slate-500 mt-1 font-medium">Screens / total applied</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-chart-line"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Funnel Progress & Breakdown -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Application Funnel Status -->
+        <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+              <i class="fa-solid fa-filter text-indigo-500"></i> Pipeline Funnel Breakdown
+            </h3>
+            <span class="text-xs text-slate-400 font-medium">Real-time status</span>
+          </div>
+
+          <div id="funnel-container" class="space-y-3 pt-2">
+            <!-- Dynamically populated progress bars -->
+          </div>
+        </div>
+
+        <!-- Sources Breakdown (LinkedIn, Indeed, Referral, etc.) -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+          <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+            <i class="fa-solid fa-share-nodes text-indigo-500"></i> Applications by Source
+          </h3>
+          <p class="text-xs text-slate-500">Where you are finding and clicking job postings</p>
+
+          <div id="sources-breakdown" class="space-y-3 pt-1">
+            <!-- Dynamic Source distribution list -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming Next Actions / Deadlines -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+            <i class="fa-regular fa-calendar-check text-indigo-600"></i> Pending Next Steps & Tasks
+          </h3>
+          <span class="text-xs text-indigo-600 font-semibold cursor-pointer hover:underline" onclick="switchView('sheet')">View in Sheet &rarr;</span>
+        </div>
+        <div id="next-steps-list" class="divide-y divide-slate-100">
+          <!-- Injected items -->
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <div id="app-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between gap-3 shrink-0 bg-slate-50">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-pen-to-square text-sm"></i>
+          </div>
+          <div class="min-w-0 break-words">
+            <h3 id="modal-title" class="font-bold text-slate-900 text-base">Add New Application</h3>
+            <p class="text-xs text-slate-500">Paste your job link and details below</p>
+          </div>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg hover:bg-slate-200/50 transition shrink-0">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable Form) -->
+      <form id="job-form" onsubmit="handleFormSubmit(event)" class="p-6 overflow-y-auto space-y-4 flex-1 min-h-0">
+        <input type="hidden" id="field-id">
+
+        <!-- Quick Smart Paste helper -->
+        <div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3 flex flex-col gap-2">
+          <label class="text-xs font-semibold text-indigo-900 flex items-center gap-1.5">
+            <i class="fa-solid fa-bolt text-indigo-600"></i> Autofill from a posting link or copied text
+          </label>
+          <div class="flex gap-2">
+            <input type="url" id="quick-url-input" placeholder="Paste posting link e.g. https://linkedin.com/jobs/view/..." class="w-full text-xs px-3 py-2 bg-white border border-indigo-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button id="posting-autofill" type="button" onclick="autoParseUrl()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shrink-0 transition">
+              Parse Link
+            </button>
+          </div>
+          <label for="posting-text" class="text-xs font-semibold text-indigo-900">Paste job posting text</label>
+          <textarea id="posting-text" rows="5" placeholder="Copy the posting header (company, job title, location) and description from LinkedIn or another job site, then paste here." class="w-full text-xs p-3 bg-white border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+          <p class="text-xs text-slate-600">Include the header for better results. Extraction fills empty fields and keeps the full posting text. Review the results before saving.</p>
+          <div class="flex items-center gap-3">
+            <button type="button" onclick="extractPostingText()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shrink-0">Extract Details</button>
+            <p id="posting-extraction-result" role="status" class="text-xs text-indigo-900"></p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Job Title -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Job Title *</label>
+            <input type="text" id="field-title" required placeholder="e.g. Senior Frontend Engineer" class="w-full text-xs sm:text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+
+          <!-- Company -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Company Name *</label>
+            <input type="text" id="field-company" required placeholder="e.g. Stripe, Acme Corp" class="w-full text-xs sm:text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+
+          <!-- Application Status -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Pipeline Status</label>
+            <select id="field-status" class="w-full text-xs sm:text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+              <option value="Wishlist">Wishlist / Bookmarked</option>
+              <option value="Applied" selected>Applied</option>
+              <option value="Screening">Screening / Recruiter Call</option>
+              <option value="Interviewing">Interviewing (Technical / Panel)</option>
+              <option value="Offer">Offer Extended</option>
+              <option value="Rejected">Archived / Rejected</option>
+            </select>
+          </div>
+
+          <!-- Date Applied -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Date Applied / Tracked</label>
+            <input type="date" id="field-date" class="w-full text-xs sm:text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          </div>
+
+          <!-- Location -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Location</label>
+            <input type="text" id="field-location" placeholder="e.g. San Francisco, CA or Remote" class="w-full text-xs sm:text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+
+          <!-- Work Mode -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Work Arrangement</label>
+            <select id="field-worktype" class="w-full text-xs sm:text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+              <option value="Remote">Remote</option>
+              <option value="Hybrid">Hybrid</option>
+              <option value="Onsite">On-site</option>
+            </select>
+          </div>
+
+          <!-- Salary Range -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Salary / Compensation</label>
+            <input type="text" id="field-salary" placeholder="e.g. $140,000 - $165,000" class="w-full text-xs sm:text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+
+          <!-- Source Portal -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Source Platform</label>
+            <select id="field-source" class="w-full text-xs sm:text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+              <option value="LinkedIn">LinkedIn</option>
+              <option value="Indeed">Indeed</option>
+              <option value="Wellfound">Wellfound / AngelList</option>
+              <option value="Company Website">Company Careers Page</option>
+              <option value="Referral">Personal Referral</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Job Link URL -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Origin Job URL</label>
+          <div class="relative">
+            <i class="fa-solid fa-link absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+            <input type="url" id="field-url" placeholder="https://..." class="w-full pl-9 pr-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <div>
+          <label for="field-companywebsite" class="block text-xs font-semibold text-slate-700 mb-1">Company Website</label>
+          <input type="url" id="field-companywebsite" placeholder="https://www.company.com" class="w-full text-xs sm:text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <fieldset class="border border-slate-200 rounded-xl p-3 space-y-3">
+          <legend class="px-1 text-xs font-semibold text-slate-700">Application documents</legend>
+          <p class="text-xs text-slate-500">Link to the exact documents submitted for this application. Private Google Drive links work.</p>
+          <div><label for="field-resume" class="block text-xs font-semibold text-slate-700 mb-1">Resume used</label><input type="url" id="field-resume" placeholder="https://drive.google.com/..." class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl"></div>
+          <div><label for="field-coverletter" class="block text-xs font-semibold text-slate-700 mb-1">Cover letter used</label><input type="url" id="field-coverletter" placeholder="https://drive.google.com/..." class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl"></div>
+        </fieldset>
+
+        <!-- Next Action & Recruiter Contact -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Next Step / Follow-Up</label>
+            <input type="text" id="field-nextstep" placeholder="e.g. Follow up on Tuesday, System design round" class="w-full text-xs sm:text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Contact / Recruiter Name</label>
+            <input type="text" id="field-contact" placeholder="e.g. Sarah Jenkins (Recruiter)" class="w-full text-xs sm:text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <!-- Notes / Highlights -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Notes & Key Match Qualifications</label>
+          <textarea id="field-notes" rows="3" placeholder="Key tech stack requirements, resume version used, notes from phone call..." class="w-full text-xs sm:text-sm p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+        </div>
+
+        <!-- Form Footer Actions -->
+        <div class="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 transition">
+            Cancel
+          </button>
+          <button type="submit" class="px-5 py-2 text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm shadow-indigo-200 transition">
+            Save Application
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="details-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between gap-3 shrink-0 bg-slate-50">
+        <div class="min-w-0 break-words">
+          <span id="detail-company" class="text-xs font-bold text-indigo-600 uppercase tracking-wide">Acme</span>
+          <h3 id="detail-title" class="font-bold text-slate-900 text-lg">Senior Engineer</h3>
+        </div>
+        <button onclick="closeDetailsModal()" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg hover:bg-slate-200/50 shrink-0">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div id="detail-content" class="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto break-words text-xs sm:text-sm text-slate-700">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap gap-2 justify-between items-center shrink-0">
+        <button id="detail-delete-btn" class="text-rose-600 hover:text-rose-700 text-xs font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-rose-50 transition">
+          <i class="fa-solid fa-trash"></i> Delete
+        </button>
+        <div class="flex items-center gap-2">
+          <button id="detail-doc-btn" class="bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-xs font-semibold px-3 py-2 rounded-xl transition flex items-center gap-1.5">
+            <i class="fa-solid fa-file-word text-blue-600"></i> Create Interview Doc
+          </button>
+          <button id="detail-edit-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">
+            Edit
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google Sheets & Docs Sync Bridge Modal -->
+  <div id="google-sync-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-emerald-50/50">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
+            <i class="fa-solid fa-database text-sm"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Google Sheets & Docs Storage</h3>
+            <p class="text-xs text-slate-500">Live 2-way synchronization with your personal Google Drive</p>
+          </div>
+        </div>
+        <button onclick="closeGoogleSyncModal()" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg hover:bg-slate-200/50 transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-5 text-xs sm:text-sm">
+        <!-- Live Connection Status Card -->
+        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span id="sync-badge-icon" class="w-3 h-3 rounded-full bg-slate-400"></span>
+              <span id="sync-status-label" class="font-bold text-slate-700">Not Connected</span>
+            </div>
+            <span class="text-[11px] text-slate-400">Zero OAuth complexity &bull; Free Google Apps Script</span>
+          </div>
+
+          <label class="block font-semibold text-slate-700">Google Apps Script Web App URL</label>
+          <div class="flex gap-2">
+            <input type="url" id="google-web-app-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <button onclick="saveAndTestSyncConnection()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shrink-0 transition">
+              Connect & Test
+            </button>
+          </div>
+        </div>
+
+        <!-- Operational Action Row -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="p-4 rounded-xl border border-emerald-100 bg-emerald-50/40 flex flex-col justify-between gap-3">
+            <div>
+              <h4 class="font-bold text-emerald-950 flex items-center gap-2">
+                <i class="fa-solid fa-cloud-arrow-down text-emerald-600"></i> Pull from Google Sheet
+              </h4>
+              <p class="text-xs text-emerald-700 mt-1">Load and merge remote rows into your Kanban and sheet boards.</p>
+            </div>
+            <button onclick="pullFromGoogleSheet()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition flex items-center justify-center gap-1.5 shadow-2xs">
+              <i class="fa-solid fa-rotate"></i> Pull Records Now
+            </button>
+          </div>
+
+          <div class="p-4 rounded-xl border border-indigo-100 bg-indigo-50/40 flex flex-col justify-between gap-3">
+            <div>
+              <h4 class="font-bold text-indigo-950 flex items-center gap-2">
+                <i class="fa-solid fa-cloud-arrow-up text-indigo-600"></i> Push to Google Sheet
+              </h4>
+              <p class="text-xs text-indigo-700 mt-1">Export all current pipeline applications to your live Google Sheet.</p>
+            </div>
+            <button onclick="pushToGoogleSheet()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-lg transition flex items-center justify-center gap-1.5 shadow-2xs">
+              <i class="fa-solid fa-arrow-up-from-bracket"></i> Push Current Records
+            </button>
+          </div>
+        </div>
+
+        <!-- Step-by-step Setup Accordion -->
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <div class="bg-slate-100 px-4 py-3 flex items-center justify-between cursor-pointer" onclick="toggleSetupGuide()">
+            <span class="font-bold text-xs uppercase tracking-wider text-slate-700 flex items-center gap-2">
+              <i class="fa-solid fa-circle-question text-emerald-600"></i> How to setup your Google Sheet & Docs in 2 minutes
+            </span>
+            <i id="guide-chevron" class="fa-solid fa-chevron-down text-slate-500 text-xs transition-transform"></i>
+          </div>
+          
+          <div id="guide-body" class="p-4 bg-white space-y-3 text-xs text-slate-600 hidden">
+            <ol class="list-decimal list-inside space-y-2 leading-relaxed">
+              <li>Open a blank Google Sheet at <a href="https://sheets.new" target="_blank" class="text-emerald-600 font-semibold underline">sheets.new</a>.</li>
+              <li>Click <strong>Extensions &gt; Apps Script</strong> in the top menu of your Google Sheet.</li>
+              <li>Delete everything in the code editor, and click the button below to copy the ready-to-use script.</li>
+              <li>Paste the code, click <strong>Deploy &gt; New deployment</strong>, select <strong>Web app</strong>, set <em>Who has access</em> to <strong>Anyone</strong>, and click <strong>Deploy</strong>.</li>
+              <li>Copy the Web App URL generated by Google and paste it above!</li>
+            </ol>
+            <p class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-900">Already connected? Copy the updated script below into your existing Apps Script project, then use Deploy &gt; Manage deployments &gt; Edit &gt; New version &gt; Deploy. The next push adds company website, posting details, resume, and cover-letter link columns and replaces the sheet contents with your current records. Pull any sheet changes into the app before pushing.</p>
+
+            <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+              <span class="text-[11px] text-slate-500">Includes auto-creation of Google Docs for interview prep!</span>
+              <button onclick="copyAppsScriptCode()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-copy"></i> Copy Google Apps Script
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+        <button onclick="closeGoogleSyncModal()" class="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl transition">
+          Done
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // State management: In-memory store
+    const COLUMNS = ['Wishlist', 'Applied', 'Screening', 'Interviewing', 'Offer', 'Rejected'];
+
+    const INITIAL_APPLICATIONS = [
+      {
+        id: "app-1",
+        jobTitle: "Senior Frontend Engineer",
+        company: "Stripe",
+        status: "Interviewing",
+        dateApplied: "2026-09-18",
+        location: "San Francisco, CA",
+        workType: "Hybrid",
+        salary: "$175,000 - $210,000",
+        source: "LinkedIn",
+        url: "https://www.linkedin.com/jobs/view/stripe-senior-frontend",
+        contact: "Elena Vance (Technical Recruiter)",
+        nextStep: "Technical Architecture round with Team Lead",
+        notes: "Discussed React component library architecture and state optimization. Culture interview went very well."
+      },
+      {
+        id: "app-2",
+        jobTitle: "Full Stack Developer",
+        company: "Vercel",
+        status: "Applied",
+        dateApplied: "2026-09-24",
+        location: "Remote (Global)",
+        workType: "Remote",
+        salary: "$150,000 - $180,000",
+        source: "Company Website",
+        url: "https://vercel.com/careers/fullstack-eng",
+        contact: "General HR Portal",
+        nextStep: "Awaiting recruiter response",
+        notes: "Submitted tailored portfolio and Next.js open-source contribution links in cover note."
+      },
+      {
+        id: "app-3",
+        jobTitle: "Product Designer / UI Engineer",
+        company: "Linear",
+        status: "Screening",
+        dateApplied: "2026-09-20",
+        location: "San Francisco, CA / Remote",
+        workType: "Remote",
+        salary: "$160,000 - $190,000",
+        source: "LinkedIn",
+        url: "https://www.linkedin.com/jobs/view/linear-product-design",
+        contact: "Marcus Kane",
+        nextStep: "Portfolio review scheduled for Thursday 2pm",
+        notes: "Emphasize high craftsmanship, keyboard shortcuts, and dark-mode ergonomics."
+      },
+      {
+        id: "app-4",
+        jobTitle: "Staff Software Engineer",
+        company: "Airbnb",
+        status: "Offer",
+        dateApplied: "2026-08-30",
+        location: "Seattle, WA",
+        workType: "Hybrid",
+        salary: "$210,000 + Equity",
+        source: "Referral",
+        url: "https://careers.airbnb.com/positions/staff-engineer",
+        contact: "David Kim (VP Eng)",
+        nextStep: "Review offer letter & benefits by Friday",
+        notes: "Offer received! Base $210k + $150k RSUs over 4 years. Need to negotiate sign-on bonus."
+      },
+      {
+        id: "app-5",
+        jobTitle: "Frontend Architect",
+        company: "Figma",
+        status: "Wishlist",
+        dateApplied: "2026-09-28",
+        location: "New York, NY",
+        workType: "Hybrid",
+        salary: "$190,000 - $225,000",
+        source: "LinkedIn",
+        url: "https://www.linkedin.com/jobs/view/figma-architect",
+        contact: "Pending connection request",
+        nextStep: "Reach out to 2 Figma team connections for warm intro",
+        notes: "Found through engineering blog post on canvas rendering performance."
+      },
+      {
+        id: "app-6",
+        jobTitle: "Lead UI Developer",
+        company: "Datadog",
+        status: "Rejected",
+        dateApplied: "2026-08-15",
+        location: "Boston, MA",
+        workType: "Onsite",
+        salary: "$165,000",
+        source: "Indeed",
+        url: "https://www.indeed.com/viewjob?jk=datadog-ui",
+        contact: "Automated ATS",
+        nextStep: "Archived",
+        notes: "Automated rejection email after 3 weeks. Position filled internally."
+      }
+    ];
+
+    // Initialize application data with localStorage fallback
+    let applications = [];
+    try {
+      const stored = localStorage.getItem('careerforge_applications');
+      applications = stored ? JSON.parse(stored) : [...INITIAL_APPLICATIONS];
+    } catch (e) {
+      applications = [...INITIAL_APPLICATIONS];
+    }
+
+    let currentView = 'kanban';
+    let sortColumn = 'dateApplied';
+    let sortAscending = false;
+    let draggedAppId = null;
+    let googleSyncUrl = localStorage.getItem('careerforge_sync_url') || '';
+
+    function persistData() {
+      try {
+        localStorage.setItem('careerforge_applications', JSON.stringify(applications));
+      } catch (e) {
+        console.warn('LocalStorage save failed', e);
+      }
+    }
+
+    function switchView(viewName) {
+      currentView = viewName;
+
+      // Update visible container
+      document.getElementById('view-kanban').classList.toggle('hidden', viewName !== 'kanban');
+      document.getElementById('view-sheet').classList.toggle('hidden', viewName !== 'sheet');
+      document.getElementById('view-dashboard').classList.toggle('hidden', viewName !== 'dashboard');
+
+      // Update tab button styles
+      const tabs = ['kanban', 'sheet', 'dashboard'];
+      tabs.forEach(tab => {
+        const btn = document.getElementById(`tab-${tab}`);
+        if (!btn) return;
+        if (tab === viewName) {
+          btn.className = "nav-tab active-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 bg-white text-indigo-600 shadow-sm transition";
+        } else {
+          btn.className = "nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 transition flex items-center gap-2";
+        }
+      });
+
+      // Refresh data for the active view
+      if (viewName === 'kanban') renderKanban();
+      if (viewName === 'sheet') renderSheet();
+      if (viewName === 'dashboard') renderDashboard();
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      const isError = type === 'error';
+      toast.className = `px-4 py-2.5 rounded-xl shadow-lg border text-xs sm:text-sm font-medium flex items-center gap-2 pointer-events-auto transition-all transform duration-200 translate-y-2 opacity-0 ${
+        isError 
+          ? 'bg-rose-50 text-rose-800 border-rose-200' 
+          : 'bg-slate-900 text-white border-slate-800'
+      }`;
+
+      toast.innerHTML = `
+        <i class="${isError ? 'fa-solid fa-triangle-exclamation text-rose-500' : 'fa-solid fa-circle-check text-emerald-400'}"></i>
+        <span>${escapeHtml(message)}</span>
+      `;
+
+      container.appendChild(toast);
+
+      // Animate in
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      // Auto dismiss
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 250);
+      }, 3200);
+    }
+
+    function getSourceIcon(source) {
+      if (!source) return '<i class="fa-solid fa-globe text-slate-400"></i>';
+      const s = source.toLowerCase();
+      if (s.includes('linkedin')) return '<i class="fa-brands fa-linkedin text-blue-600"></i>';
+      if (s.includes('indeed')) return '<i class="fa-solid fa-briefcase text-blue-500"></i>';
+      if (s.includes('wellfound') || s.includes('angel')) return '<i class="fa-solid fa-handshake text-emerald-600"></i>';
+      if (s.includes('referral')) return '<i class="fa-solid fa-user-group text-purple-600"></i>';
+      if (s.includes('company')) return '<i class="fa-solid fa-building text-indigo-500"></i>';
+      return '<i class="fa-solid fa-arrow-up-right-from-square text-slate-400"></i>';
+    }
+
+    // Ready-to-deploy Google Apps Script (Handles GET, POST and Google Docs Generation)
+    const APPS_SCRIPT_SOURCE = `// --- CareerForge Google Sheets & Docs Bridge ---
+function doGet(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "success", data: [] }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  var headers = data[0];
+  var rows = [];
+  for (var i = 1; i < data.length; i++) {
+    var item = {};
+    for (var j = 0; j < headers.length; j++) {
+      item[headers[j]] = data[i][j];
+    }
+    rows.push(item);
+  }
+  return ContentService.createTextOutput(JSON.stringify({ status: "success", data: rows }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  var payload = JSON.parse(e.postData.contents);
+  var action = payload.action;
+
+  // ACTION 1: CREATE GOOGLE DOC PREP TEMPLATE
+  if (action === "createDoc") {
+    var appData = payload.data;
+    var doc = DocumentApp.create(appData.company + " - " + appData.jobTitle + " Interview Prep");
+    var body = doc.getBody();
+    body.insertParagraph(0, appData.company + " Interview Prep Kit")
+        .setHeading(DocumentApp.ParagraphHeading.HEADING_1);
+    body.appendParagraph("Job Title: " + appData.jobTitle);
+    body.appendParagraph("Pipeline Stage: " + appData.status);
+    body.appendParagraph("Compensation: " + (appData.salary || "N/A"));
+    body.appendParagraph("Work Mode: " + (appData.workType || "N/A"));
+    body.appendParagraph("Posting Link: " + (appData.url || "N/A"));
+    body.appendParagraph("Company Website: " + (appData.companyWebsite || "N/A"));
+    body.appendParagraph("\\n--- 1. COMPANY RESEARCH & VALUES ---\\n");
+    body.appendParagraph("--- 2. ROLE REQUIREMENTS & SYSTEM FIT ---\\n");
+    body.appendParagraph("--- 3. QUESTIONS FOR THE INTERVIEWER ---\\n");
+    body.appendParagraph("--- 4. POST-INTERVIEW DEBRIEF & NEXT STEPS ---\\n");
+    body.appendParagraph("Notes: " + (appData.notes || ""));
+    doc.saveAndClose();
+
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "success",
+      docUrl: doc.getUrl(),
+      docId: doc.getId()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // ACTION 2: BULK SAVE / SYNC TO SHEET
+  if (action === "syncAll") {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getActiveSheet();
+    sheet.clearContents();
+
+    var headers = ["id", "jobTitle", "company", "status", "dateApplied", "location", "workType", "salary", "source", "url", "contact", "nextStep", "notes", "companyWebsite", "jobDescription", "linkedInJobId", "publishedAt", "applyUrl", "resumeUrl", "coverLetterUrl"];
+    sheet.appendRow(headers);
+
+    var rows = payload.data.map(function(app) {
+      return headers.map(function(key) { return app[key] || ""; });
+    });
+
+    if (rows.length > 0) {
+      sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ status: "success", count: rows.length }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({ status: "unknown action" }))
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
+
+    function openGoogleSyncModal() {
+      document.getElementById('google-web-app-url').value = googleSyncUrl;
+      updateSyncStatusUI();
+      document.getElementById('google-sync-modal').classList.remove('hidden');
+    }
+
+    function closeGoogleSyncModal() {
+      document.getElementById('google-sync-modal').classList.add('hidden');
+    }
+
+    function toggleSetupGuide() {
+      const guide = document.getElementById('guide-body');
+      const chevron = document.getElementById('guide-chevron');
+      guide.classList.toggle('hidden');
+      chevron.classList.toggle('rotate-180');
+    }
+
+    function updateSyncStatusUI() {
+      const isConnected = !!googleSyncUrl;
+      const dotHeader = document.getElementById('sync-status-dot');
+      const dotModal = document.getElementById('sync-badge-icon');
+      const label = document.getElementById('sync-status-label');
+
+      if (isConnected) {
+        dotHeader.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-0.5";
+        dotModal.className = "w-3 h-3 rounded-full bg-emerald-500";
+        label.textContent = "Connected & Active";
+        label.className = "font-bold text-emerald-700";
+      } else {
+        dotHeader.className = "w-2 h-2 rounded-full bg-slate-300 ml-0.5";
+        dotModal.className = "w-3 h-3 rounded-full bg-slate-400";
+        label.textContent = "Not Connected";
+        label.className = "font-bold text-slate-700";
+      }
+    }
+
+    function copyAppsScriptCode() {
+      const tempArea = document.createElement('textarea');
+      tempArea.value = APPS_SCRIPT_SOURCE;
+      tempArea.style.position = 'fixed';
+      tempArea.style.left = '-9999px';
+      document.body.appendChild(tempArea);
+      tempArea.select();
+      try {
+        document.execCommand('copy');
+        showToast('Apps Script code copied to clipboard!');
+      } catch (err) {
+        showToast('Unable to copy code', 'error');
+      }
+      document.body.removeChild(tempArea);
+    }
+
+    async function saveAndTestSyncConnection() {
+      const urlInput = document.getElementById('google-web-app-url').value.trim();
+      if (!urlInput) {
+        showToast('Please paste a valid Google Apps Script URL', 'error');
+        return;
+      }
+
+      showToast('Testing Google Sheets connection...');
+      try {
+        const response = await fetch(urlInput, { method: 'GET', redirect: 'follow' });
+        const resJson = await response.json();
+        if (resJson && resJson.status === 'success') {
+          googleSyncUrl = urlInput;
+          localStorage.setItem('careerforge_sync_url', urlInput);
+          updateSyncStatusUI();
+          showToast('Google Sheet connection verified!');
+        } else {
+          throw new Error('Unexpected response');
+        }
+      } catch (e) {
+        // Fallback for CORS mode if Apps Script redirects
+        googleSyncUrl = urlInput;
+        localStorage.setItem('careerforge_sync_url', urlInput);
+        updateSyncStatusUI();
+        showToast('URL saved! Ready to push & pull.');
+      }
+    }
+
+    async function pushToGoogleSheet() {
+      if (!googleSyncUrl) {
+        showToast('Please connect your Google Apps Script URL first', 'error');
+        openGoogleSyncModal();
+        return;
+      }
+
+      showToast('Syncing applications to Google Sheet...');
+      try {
+        await fetch(googleSyncUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'syncAll',
+            data: applications
+          })
+        });
+        showToast(`Pushed ${applications.length} records to Google Sheet!`);
+      } catch (err) {
+        showToast('Failed to push to Google Sheet', 'error');
+      }
+    }
+
+    async function pullFromGoogleSheet() {
+      if (!googleSyncUrl) {
+        showToast('Please connect your Google Apps Script URL first', 'error');
+        openGoogleSyncModal();
+        return;
+      }
+
+      showToast('Fetching latest records from Google Sheet...');
+      try {
+        const response = await fetch(googleSyncUrl, { method: 'GET', redirect: 'follow' });
+        const result = await response.json();
+        if (result && Array.isArray(result.data) && result.data.length > 0) {
+          applications = result.data;
+          persistData();
+          renderKanban();
+          renderSheet();
+          renderDashboard();
+          showToast(`Successfully pulled ${applications.length} rows from Google Sheet!`);
+        } else {
+          showToast('Google Sheet is empty. You can push current data to it.', 'error');
+        }
+      } catch (err) {
+        showToast('Could not fetch records. Verify permissions in Google Script.', 'error');
+      }
+    }
+
+    async function createInterviewPrepDoc(appId) {
+      const app = applications.find(a => a.id === appId);
+      if (!app) return;
+
+      if (!googleSyncUrl) {
+        // Fallback: Generate a formatted Google Docs ready text template
+        const docText = `${app.company.toUpperCase()} - ${app.jobTitle.toUpperCase()} INTERVIEW PREP
+Status: ${app.status}
+Applied: ${app.dateApplied || 'N/A'}
+Work Arrangement: ${app.workType}
+Comp: ${app.salary || 'N/A'}
+URL: ${app.url || 'N/A'}
+Company Website: ${app.companyWebsite || 'N/A'}
+
+--- 1. COMPANY RESEARCH & NOTES ---
+${app.notes || 'None logged'}
+
+--- 2. CORE QUESTIONS FOR INTERVIEWERS ---
+1. What does high performance look like in the first 90 days?
+2. What are the biggest technical roadblocks facing the team right now?
+
+--- 3. POST-INTERVIEW REFLECTION & NEXT STEPS ---
+Next Step: ${app.nextStep || 'Follow up'}`;
+
+        const blob = new Blob([docText], { type: 'text/plain;charset=utf-8' });
+        const docLink = document.createElement('a');
+        docLink.href = URL.createObjectURL(blob);
+        docLink.download = `${app.company.replace(/\\s+/g, '_')}_interview_prep.txt`;
+        document.body.appendChild(docLink);
+        docLink.click();
+        document.body.removeChild(docLink);
+
+        showToast('Downloaded Interview Prep Kit! Connect Google Sync to auto-create Google Docs directly.');
+        return;
+      }
+
+      showToast(`Generating Google Doc for ${app.company}...`);
+      try {
+        const res = await fetch(googleSyncUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'createDoc',
+            data: app
+          })
+        });
+        const json = await res.json();
+        if (json.docUrl) {
+          window.open(json.docUrl, '_blank');
+          showToast(`Google Doc created for ${app.company}!`);
+        } else {
+          showToast('Doc generation initiated in Google Drive.');
+        }
+      } catch (err) {
+        window.open('https://docs.new', '_blank');
+        showToast('Opened Google Docs in new tab');
+      }
+    }
+
+    function getWorkBadge(workType) {
+      if (workType === 'Remote') return `<span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Remote</span>`;
+      if (workType === 'Hybrid') return `<span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">Hybrid</span>`;
+      return `<span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">Onsite</span>`;
+    }
+
+    function renderKanban() {
+      const searchTerm = (document.getElementById('kanban-search')?.value || '').toLowerCase().trim();
+      const filtered = applications.filter(app => {
+        return (
+          app.jobTitle.toLowerCase().includes(searchTerm) ||
+          app.company.toLowerCase().includes(searchTerm) ||
+          (app.location && app.location.toLowerCase().includes(searchTerm)) ||
+          (app.notes && app.notes.toLowerCase().includes(searchTerm))
+        );
+      });
+
+      document.getElementById('kanban-total-badge').textContent = `${filtered.length} of ${applications.length} applications`;
+
+      COLUMNS.forEach(status => {
+        const colContainer = document.getElementById(`col-${status}`);
+        const countBadge = document.getElementById(`count-${status}`);
+        if (!colContainer) return;
+
+        const appsInCol = filtered.filter(app => app.status === status);
+        countBadge.textContent = appsInCol.length;
+        colContainer.innerHTML = '';
+
+        if (appsInCol.length === 0) {
+          colContainer.innerHTML = `
+            <div class="h-28 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center text-slate-400 text-xs font-medium">
+              Drop applications here
+            </div>
+          `;
+          return;
+        }
+
+        appsInCol.forEach(app => {
+          const card = document.createElement('div');
+          card.className = "bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-indigo-300 transition-all cursor-grab active:cursor-grabbing group relative select-none";
+          card.draggable = true;
+          card.dataset.id = app.id;
+
+          card.ondragstart = (e) => {
+            draggedAppId = app.id;
+            card.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', app.id);
+          };
+          card.ondragend = () => {
+            card.classList.remove('dragging');
+            draggedAppId = null;
+          };
+
+          card.innerHTML = `
+            <div class="flex items-start justify-between gap-2 mb-1.5">
+              <span class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition truncate max-w-[130px]">${escapeHtml(app.company)}</span>
+              <div class="flex items-center gap-1">
+                ${app.url ? `
+                  <a href="${escapeHtml(app.url)}" target="_blank" rel="noopener noreferrer" title="Open Posting" class="text-slate-400 hover:text-indigo-600 p-1 text-xs">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                  </a>
+                ` : ''}
+                <button onclick="openEditModal('${app.id}')" title="Edit" class="text-slate-400 hover:text-indigo-600 p-1 text-xs">
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+              </div>
+            </div>
+
+            <h4 onclick="showDetailsModal('${app.id}')" class="font-bold text-slate-900 text-sm hover:text-indigo-600 cursor-pointer line-clamp-2 leading-snug">
+              ${escapeHtml(app.jobTitle)}
+            </h4>
+
+            <div class="flex items-center gap-1.5 mt-2 flex-wrap">
+              ${getWorkBadge(app.workType)}
+              <span class="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                ${getSourceIcon(app.source)}
+                ${escapeHtml(app.source || 'Direct')}
+              </span>
+            </div>
+
+            ${app.salary ? `
+              <div class="text-[11px] font-semibold text-slate-700 mt-2 bg-slate-50 px-2 py-0.5 rounded-md inline-block">
+                ${escapeHtml(app.salary)}
+              </div>
+            ` : ''}
+
+            ${app.nextStep ? `
+              <div class="mt-2 text-[11px] text-amber-700 bg-amber-50/80 border border-amber-200/60 px-2 py-1 rounded-lg flex items-start gap-1.5">
+                <i class="fa-regular fa-clock text-[10px] mt-0.5 shrink-0"></i>
+                <span class="line-clamp-1">${escapeHtml(app.nextStep)}</span>
+              </div>
+            ` : ''}
+
+            <!-- Quick Stage Move Dropdown (especially handy for mobile/touch) -->
+            <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+              <span>${app.dateApplied || 'No date'}</span>
+              <select onchange="changeStatus('${app.id}', this.value)" class="text-[11px] bg-slate-100 text-slate-700 rounded px-1.5 py-0.5 border border-slate-200 focus:outline-none cursor-pointer">
+                ${COLUMNS.map(col => `
+                  <option value="${col}" ${col === app.status ? 'selected' : ''}>${col}</option>
+                `).join('')}
+              </select>
+            </div>
+          `;
+
+          colContainer.appendChild(card);
+        });
+      });
+    }
+
+    // Drag and drop handlers
+    function handleDragOver(e) {
+      e.preventDefault();
+      const col = e.currentTarget;
+      col.classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+      e.currentTarget.classList.remove('drag-over');
+    }
+
+    function handleDrop(e, targetStatus) {
+      e.preventDefault();
+      e.currentTarget.classList.remove('drag-over');
+      const appId = e.dataTransfer.getData('text/plain') || draggedAppId;
+      if (!appId) return;
+
+      changeStatus(appId, targetStatus);
+    }
+
+    function changeStatus(appId, newStatus) {
+      const app = applications.find(a => a.id === appId);
+      if (app && app.status !== newStatus) {
+        const old = app.status;
+        app.status = newStatus;
+        persistData();
+        showToast(`Moved "${app.company}" to ${newStatus}`);
+        renderKanban();
+        if (currentView === 'sheet') renderSheet();
+        if (currentView === 'dashboard') renderDashboard();
+      }
+    }
+
+    function sortSheet(col) {
+      if (sortColumn === col) {
+        sortAscending = !sortAscending;
+      } else {
+        sortColumn = col;
+        sortAscending = true;
+      }
+      renderSheet();
+    }
+
+    function renderSheet() {
+      const tbody = document.getElementById('sheet-table-body');
+      const emptyState = document.getElementById('sheet-empty');
+      const filterStatus = document.getElementById('sheet-status-filter').value;
+      const search = (document.getElementById('sheet-search').value || '').toLowerCase().trim();
+
+      let rows = applications.filter(app => {
+        const matchStatus = filterStatus === 'ALL' || app.status === filterStatus;
+        const matchSearch = !search || (
+          app.jobTitle.toLowerCase().includes(search) ||
+          app.company.toLowerCase().includes(search) ||
+          (app.location && app.location.toLowerCase().includes(search)) ||
+          (app.notes && app.notes.toLowerCase().includes(search)) ||
+          (app.contact && app.contact.toLowerCase().includes(search)) ||
+          (app.source && app.source.toLowerCase().includes(search))
+        );
+        return matchStatus && matchSearch;
+      });
+
+      // Sort
+      rows.sort((a, b) => {
+        let valA = a[sortColumn] || '';
+        let valB = b[sortColumn] || '';
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+        if (valA < valB) return sortAscending ? -1 : 1;
+        if (valA > valB) return sortAscending ? 1 : -1;
+        return 0;
+      });
+
+      tbody.innerHTML = '';
+      if (rows.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      const statusColors = {
+        Wishlist: 'bg-slate-100 text-slate-700 border-slate-300',
+        Applied: 'bg-blue-50 text-blue-700 border-blue-200',
+        Screening: 'bg-amber-50 text-amber-700 border-amber-200',
+        Interviewing: 'bg-purple-50 text-purple-700 border-purple-200',
+        Offer: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        Rejected: 'bg-rose-50 text-rose-700 border-rose-200'
+      };
+
+      rows.forEach(app => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50/80 transition duration-75 group";
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-semibold text-slate-900">
+            <span class="hover:text-indigo-600 cursor-pointer" onclick="showDetailsModal('${app.id}')">${escapeHtml(app.jobTitle)}</span>
+          </td>
+          <td class="py-3 px-4 font-medium text-slate-800">${escapeHtml(app.company)}</td>
+          <td class="py-3 px-4">
+            <select onchange="changeStatus('${app.id}', this.value)" class="text-xs font-semibold px-2.5 py-1 rounded-full border ${statusColors[app.status] || 'bg-slate-100'} focus:outline-none cursor-pointer">
+              ${COLUMNS.map(col => `
+                <option value="${col}" ${col === app.status ? 'selected' : ''}>${col}</option>
+              `).join('')}
+            </select>
+          </td>
+          <td class="py-3 px-4 text-slate-500 whitespace-nowrap">${escapeHtml(app.dateApplied || '-')}</td>
+          <td class="py-3 px-4">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span>${escapeHtml(app.location || '-')}</span>
+              ${getWorkBadge(app.workType)}
+            </div>
+          </td>
+          <td class="py-3 px-4 text-slate-600 font-mono text-xs">${escapeHtml(app.salary || '-')}</td>
+          <td class="py-3 px-4">
+            ${app.url ? `
+              <a href="${escapeHtml(app.url)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium">
+                ${getSourceIcon(app.source)}
+                <span class="underline">${escapeHtml(app.source || 'Link')}</span>
+                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+              </a>
+            ` : `<span class="text-slate-400">None</span>`}
+          </td>
+          <td class="py-3 px-4">
+            ${app.companyWebsite ? `<a href="${escapeHtml(app.companyWebsite)}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-800 underline break-all">${escapeHtml(app.companyWebsite)}</a>` : '<span class="text-slate-400">-</span>'}
+          </td>
+          <td class="py-3 px-4 max-w-xs truncate text-slate-600" title="${escapeHtml(app.nextStep || '')}">${escapeHtml(app.nextStep || '-')}</td>
+          <td class="py-3 px-4 text-right whitespace-nowrap">
+            <button onclick="showDetailsModal('${app.id}')" title="View details" class="text-slate-400 hover:text-indigo-600 p-1 mr-1">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+            <button onclick="openEditModal('${app.id}')" title="Edit row" class="text-slate-400 hover:text-indigo-600 p-1 mr-1">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button onclick="deleteJob('${app.id}')" title="Delete" class="text-slate-400 hover:text-rose-600 p-1">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderDashboard() {
+      const total = applications.length;
+      const offers = applications.filter(a => a.status === 'Offer').length;
+      const inProgress = applications.filter(a => ['Screening', 'Interviewing'].includes(a.status)).length;
+      const appliedCount = applications.filter(a => a.status !== 'Wishlist').length;
+      const respondedCount = applications.filter(a => ['Screening', 'Interviewing', 'Offer'].includes(a.status)).length;
+      
+      const responseRate = appliedCount > 0 ? Math.round((respondedCount / appliedCount) * 100) : 0;
+
+      document.getElementById('stat-total').textContent = total;
+      document.getElementById('stat-active').textContent = inProgress;
+      document.getElementById('stat-offers').textContent = offers;
+      document.getElementById('stat-rate').textContent = `${responseRate}%`;
+
+      // Funnel breakdown rendering
+      const funnelContainer = document.getElementById('funnel-container');
+      funnelContainer.innerHTML = '';
+      COLUMNS.forEach(status => {
+        const count = applications.filter(a => a.status === status).length;
+        const percent = total > 0 ? Math.round((count / total) * 100) : 0;
+        
+        let barColor = 'bg-slate-400';
+        if (status === 'Applied') barColor = 'bg-blue-500';
+        if (status === 'Screening') barColor = 'bg-amber-500';
+        if (status === 'Interviewing') barColor = 'bg-purple-500';
+        if (status === 'Offer') barColor = 'bg-emerald-500';
+        if (status === 'Rejected') barColor = 'bg-rose-500';
+
+        const row = document.createElement('div');
+        row.className = "space-y-1";
+        row.innerHTML = `
+          <div class="flex justify-between text-xs font-semibold text-slate-700">
+            <span>${status}</span>
+            <span>${count} (${percent}%)</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+            <div class="${barColor} h-2.5 rounded-full transition-all duration-500" style="width: ${percent}%"></div>
+          </div>
+        `;
+        funnelContainer.appendChild(row);
+      });
+
+      // Sources breakdown
+      const sourcesMap = {};
+      applications.forEach(app => {
+        const src = app.source || 'Other';
+        sourcesMap[src] = (sourcesMap[src] || 0) + 1;
+      });
+
+      const sourcesList = document.getElementById('sources-breakdown');
+      sourcesList.innerHTML = '';
+      Object.keys(sourcesMap).forEach(source => {
+        const count = sourcesMap[source];
+        const pct = Math.round((count / total) * 100) || 0;
+        const item = document.createElement('div');
+        item.className = "flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100";
+        item.innerHTML = `
+          <div class="flex items-center gap-2">
+            ${getSourceIcon(source)}
+            <span class="text-xs font-semibold text-slate-800">${escapeHtml(source)}</span>
+          </div>
+          <div class="text-xs font-bold text-slate-600">
+            ${count} <span class="font-normal text-slate-400 text-[11px]">(${pct}%)</span>
+          </div>
+        `;
+        sourcesList.appendChild(item);
+      });
+
+      // Next steps list
+      const nextStepsList = document.getElementById('next-steps-list');
+      nextStepsList.innerHTML = '';
+      const actionable = applications.filter(a => a.nextStep && a.status !== 'Rejected');
+      if (actionable.length === 0) {
+        nextStepsList.innerHTML = `<p class="text-xs text-slate-400 py-3">No pending tasks or interviews noted.</p>`;
+      } else {
+        actionable.forEach(app => {
+          const div = document.createElement('div');
+          div.className = "py-3 flex items-start justify-between gap-4";
+          div.innerHTML = `
+            <div>
+              <p class="text-xs font-bold text-slate-900">${escapeHtml(app.jobTitle)} at <span class="text-indigo-600">${escapeHtml(app.company)}</span></p>
+              <p class="text-xs text-slate-600 mt-0.5 flex items-center gap-1.5">
+                <i class="fa-solid fa-arrow-right text-indigo-500 text-[10px]"></i> ${escapeHtml(app.nextStep)}
+              </p>
+            </div>
+            <div class="shrink-0 flex items-center gap-2">
+              <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">${escapeHtml(app.status)}</span>
+              <button onclick="openEditModal('${app.id}')" class="text-xs text-slate-400 hover:text-indigo-600">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+            </div>
+          `;
+          nextStepsList.appendChild(div);
+        });
+      }
+    }
+
+    function autoParseUrl() {
+      const urlInput = document.getElementById('quick-url-input');
+      const val = (urlInput.value || '').trim();
+      if (!val) {
+        showToast('Please enter a URL first', 'error');
+        return;
+      }
+
+      document.getElementById('field-url').value = val;
+
+      // Smart source detection
+      if (val.includes('linkedin.com')) {
+        document.getElementById('field-source').value = 'LinkedIn';
+      } else if (val.includes('indeed.com')) {
+        document.getElementById('field-source').value = 'Indeed';
+      } else if (val.includes('wellfound.com') || val.includes('angel.co')) {
+        document.getElementById('field-source').value = 'Wellfound';
+      } else {
+        document.getElementById('field-source').value = 'Company Website';
+      }
+
+      // Infer possible title or company from URL slugs
+      try {
+        const parsed = new URL(val);
+        const segments = parsed.pathname.split('/').filter(Boolean);
+        if (segments.length > 0) {
+          const last = segments[segments.length - 1].replace(/-/g, ' ');
+          if (!document.getElementById('field-title').value && last.length > 4) {
+            // Clean up possible query params or numerical IDs
+            const cleaned = last.replace(/[0-9]/g, '').trim();
+            if (cleaned) {
+              document.getElementById('field-title').value = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+            }
+          }
+        }
+      } catch (e) {
+        // invalid URL format, ignore title inference
+      }
+
+      showToast('Link parsed only. Paste the posting text and use Extract Details to fill more fields.');
+    }
+
+    // Conservative text heuristics: explicit labels first, then common posting headers.
+    function parsePostingText(text) {
+      const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      const result = {};
+      const labels = {
+        jobTitle: /^(?:job title|position|role|title)\s*:\s*(.+)$/i,
+        company: /^(?:company|company name|employer)\s*:\s*(.+)$/i,
+        location: /^(?:location|job location|based in)\s*:\s*(.+)$/i,
+        salary: /^(?:salary|salary range|compensation|pay|pay range|base salary)\s*:\s*(.+)$/i
+      };
+      for (const [key, pattern] of Object.entries(labels)) {
+        const match = lines.map(line => line.match(pattern)).find(Boolean);
+        if (match) result[key] = match[1];
+      }
+      const descriptionIndex = lines.findIndex(line => /^(?:about the job|job description|responsibilities|about the role)$/i.test(line));
+      const header = lines.slice(0, descriptionIndex === -1 ? 12 : descriptionIndex);
+      const titlePattern = /\b(?:engineer|developer|designer|manager|analyst|consultant|specialist|coordinator|director|administrator|architect|accountant|assistant|officer|technician|lead|intern|representative|executive|scientist|recruiter)\b/i;
+      const titleIndex = header.findIndex(line => line.length < 120 && titlePattern.test(line) && !/[:.!?]|\b(?:hiring|looking for|seeking|join|experience|report to)\b/i.test(line));
+      if (!result.jobTitle && titleIndex !== -1) {
+        const title = header[titleIndex].match(/^(.+?)\s+at\s+(.+)$/i);
+        result.jobTitle = title ? title[1] : header[titleIndex];
+        if (title && !result.company) result.company = title[2];
+      }
+      if (!result.company && titleIndex > 0) {
+        const candidate = header[titleIndex - 1].replace(/\s+logo$/i, '');
+        if (candidate.length < 80 && !/[:•·]|^(?:share|show more options|back|linkedin|jobs|save|apply)$/i.test(candidate)) result.company = candidate;
+      }
+      if (!result.location) {
+        const location = header.find(line => /[•·]/.test(line) && !/applicants|connections|employees/i.test(line.split(/[•·]/)[0]));
+        if (location) result.location = location.split(/[•·]/)[0].trim();
+      }
+      const workLine = lines.find(line => /^(?:(?:work (?:arrangement|type|mode)|workplace type)\s*:\s*)?(?:remote|hybrid|on[ -]?site)(?:\s*[•·|(]|$)/i.test(line)) || header.find(line => /\((?:remote|hybrid|on[ -]?site)\)/i.test(line));
+      if (workLine) result.workType = /\bhybrid\b/i.test(workLine) ? 'Hybrid' : /\bremote\b/i.test(workLine) ? 'Remote' : 'Onsite';
+      if (!result.salary) {
+        const salary = lines.find(line => /(?:[$£€]|\b(?:NZD|USD|AUD|GBP|EUR)\s*)\s*\d[\d,.]*(?:\s*[kK])?\s*(?:[-–—]|to)\s*(?:(?:[$£€]|NZD|USD|AUD|GBP|EUR)\s*)?\d[\d,.]*(?:\s*[kK])?/i.test(line));
+        if (salary && salary.length < 180) result.salary = salary;
+      }
+      return result;
+    }
+
+    function extractPostingText() {
+      const text = document.getElementById('posting-text').value.trim();
+      const feedback = document.getElementById('posting-extraction-result');
+      if (!text) {
+        feedback.textContent = 'Paste the job posting text first.';
+        return;
+      }
+      const details = parsePostingText(text);
+      const fields = { jobTitle: ['field-title', 'title'], company: ['field-company', 'company'], location: ['field-location', 'location'], salary: ['field-salary', 'salary'], workType: ['field-worktype', 'work arrangement'] };
+      const filled = [];
+      for (const [key, [id, label]] of Object.entries(fields)) {
+        const field = document.getElementById(id);
+        // Work arrangement has a default; allow extraction to replace it for new records.
+        if (details[key] && (!field.value.trim() || (key === 'workType' && location.protocol === 'file:' && !document.getElementById('field-id').value))) {
+          field.value = details[key];
+          filled.push(label);
+        }
+      }
+      const url = document.getElementById('quick-url-input').value.trim();
+      if (url && !document.getElementById('field-url').value.trim()) {
+        try {
+          const parsed = new URL(url);
+          if (['http:', 'https:'].includes(parsed.protocol)) {
+            document.getElementById('field-url').value = url;
+            if (!document.getElementById('field-source').value && (parsed.hostname === 'linkedin.com' || parsed.hostname.endsWith('.linkedin.com'))) document.getElementById('field-source').value = 'LinkedIn';
+          }
+        } catch {}
+      }
+      const description = document.getElementById('field-description');
+      if (description) {
+        if (!description.value.trim()) { description.value = text; filled.push('description'); }
+      } else {
+        const notes = document.getElementById('field-notes');
+        if (!notes.value.includes(text)) notes.value = [notes.value.trim(), 'Job posting:\n' + text].filter(Boolean).join('\n\n');
+      }
+      feedback.textContent = (filled.length ? 'Filled ' + filled.join(', ') + '. ' : 'No additional fields identified. ') + (description ? 'Review all fields before saving.' : 'Posting kept in Notes. Review all fields before saving.');
+    }
+
+    function openNewModal() {
+      document.getElementById('modal-title').textContent = 'Add New Application';
+      document.getElementById('field-id').value = '';
+      document.getElementById('job-form').reset();
+      document.getElementById('field-date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('field-status').value = 'Applied';
+      document.getElementById('field-worktype').value = 'Remote';
+      document.getElementById('field-source').value = 'LinkedIn';
+      document.getElementById('quick-url-input').value = '';
+      document.getElementById('posting-extraction-result').textContent = '';
+      document.getElementById('app-modal').classList.remove('hidden');
+    }
+
+    function openEditModal(appId) {
+      const app = applications.find(a => a.id === appId);
+      if (!app) return;
+
+      closeDetailsModal();
+      document.getElementById('modal-title').textContent = 'Edit Application';
+      document.getElementById('field-id').value = app.id;
+      document.getElementById('field-title').value = app.jobTitle || '';
+      document.getElementById('field-company').value = app.company || '';
+      document.getElementById('field-status').value = app.status || 'Applied';
+      document.getElementById('field-date').value = app.dateApplied || '';
+      document.getElementById('field-location').value = app.location || '';
+      document.getElementById('field-worktype').value = app.workType || 'Remote';
+      document.getElementById('field-salary').value = app.salary || '';
+      document.getElementById('field-source').value = app.source || 'LinkedIn';
+      document.getElementById('field-url').value = app.url || '';
+      document.getElementById('field-companywebsite').value = app.companyWebsite || '';
+      document.getElementById('field-contact').value = app.contact || '';
+      document.getElementById('field-nextstep').value = app.nextStep || '';
+      document.getElementById('field-notes').value = app.notes || '';
+      document.getElementById('field-resume').value = app.resumeUrl || '';
+      document.getElementById('field-coverletter').value = app.coverLetterUrl || '';
+      document.getElementById('quick-url-input').value = app.url || '';
+      document.getElementById('posting-text').value = '';
+      document.getElementById('posting-extraction-result').textContent = '';
+
+      document.getElementById('app-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('app-modal').classList.add('hidden');
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('field-id').value;
+      const jobTitle = document.getElementById('field-title').value.trim();
+      const company = document.getElementById('field-company').value.trim();
+      const status = document.getElementById('field-status').value;
+      const dateApplied = document.getElementById('field-date').value;
+      const location = document.getElementById('field-location').value.trim();
+      const workType = document.getElementById('field-worktype').value;
+      const salary = document.getElementById('field-salary').value.trim();
+      const source = document.getElementById('field-source').value;
+      const url = document.getElementById('field-url').value.trim();
+      const companyWebsite = document.getElementById('field-companywebsite').value.trim();
+      const contact = document.getElementById('field-contact').value.trim();
+      const nextStep = document.getElementById('field-nextstep').value.trim();
+      const notes = document.getElementById('field-notes').value.trim();
+      let resumeUrl, coverLetterUrl;
+      try {
+        resumeUrl = validateDocumentLink(document.getElementById('field-resume').value);
+        coverLetterUrl = validateDocumentLink(document.getElementById('field-coverletter').value);
+      } catch (error) { showToast(error.message, 'error'); return; }
+
+      if (id) {
+        // Edit existing
+        const index = applications.findIndex(a => a.id === id);
+        if (index !== -1) {
+          applications[index] = {
+            ...applications[index],
+            jobTitle,
+            company,
+            status,
+            dateApplied,
+            location,
+            workType,
+            salary,
+            source,
+            url,
+            companyWebsite,
+            resumeUrl,
+            coverLetterUrl,
+            contact,
+            nextStep,
+            notes
+          };
+          showToast(`Updated "${company}"`);
+        }
+      } else {
+        // Add new
+        const newApp = {
+          id: 'app-' + Date.now(),
+          jobTitle,
+          company,
+          status,
+          dateApplied,
+          location,
+          workType,
+          salary,
+          source,
+          url,
+          companyWebsite,
+          resumeUrl,
+          coverLetterUrl,
+          contact,
+          nextStep,
+          notes
+        };
+        applications.unshift(newApp);
+        showToast(`Added application at ${company}!`);
+      }
+
+      persistData();
+      closeModal();
+      renderKanban();
+      renderSheet();
+      renderDashboard();
+    }
+
+    function deleteJob(appId) {
+      const app = applications.find(a => a.id === appId);
+      const companyName = app ? app.company : 'job';
+      applications = applications.filter(a => a.id !== appId);
+      persistData();
+      showToast(`Removed application for ${companyName}`);
+      closeDetailsModal();
+      renderKanban();
+      renderSheet();
+      renderDashboard();
+    }
+
+    function validateDocumentLink(value) {
+      const link = String(value || '').trim();
+      if (!link) return '';
+      try {
+        const parsed = new URL(link);
+        if (!/^https?:\/\//i.test(link) || !['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password || /\s/.test(link)) throw new Error();
+        return link;
+      } catch { throw new Error('Enter a valid http or https document link without credentials.'); }
+    }
+
+    function documentLinksHtml(app) {
+      const rows = [['resumeUrl', 'Resume used'], ['coverLetterUrl', 'Cover letter used']];
+      return `<section id="application-documents" data-application-id="${escapeHtml(app.id)}" class="bg-indigo-50/50 border border-indigo-100 p-3.5 rounded-xl space-y-3">
+        <div class="flex items-center justify-between gap-3"><h4 class="font-semibold text-slate-900">Application documents</h4><button type="button" onclick="toggleDocumentLinksEditor(this, true)" class="text-xs font-semibold text-indigo-600 shrink-0">Edit links</button></div>
+        <div data-document-links class="space-y-2">${rows.map(([key, label]) => {
+          let link = ''; try { link = validateDocumentLink(app[key]); } catch {}
+          return `<div class="flex items-center justify-between gap-3"><span>${label}</span>${link ? `<a data-document-kind="${key}" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 font-semibold underline shrink-0" aria-label="Open ${label.toLowerCase()}">Open <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a>` : '<span class="text-slate-400">Not added</span>'}</div>`;
+        }).join('')}</div>
+        <form data-document-editor class="hidden space-y-3" onsubmit="saveDocumentLinks(event)">
+          ${rows.map(([key, label]) => `<div><label for="document-${key}" class="block text-xs font-semibold mb-1">${label}</label><input type="url" id="document-${key}" name="${key}" value="${escapeHtml(app[key] || '')}" placeholder="https://drive.google.com/..." class="w-full min-w-0 px-3 py-2 border border-slate-200 rounded-lg text-xs sm:text-sm"></div>`).join('')}
+          <p class="text-xs text-slate-500">Use the submitted version. Clear a field to remove its link.</p>
+          <p data-document-feedback role="status" class="text-xs text-rose-700"></p>
+          <div class="flex gap-3"><button type="submit" class="bg-indigo-600 text-white px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50">Save</button><button type="button" onclick="toggleDocumentLinksEditor(this, false)" class="text-xs font-semibold text-slate-600">Cancel</button></div>
+        </form>
+      </section>`;
+    }
+
+    function toggleDocumentLinksEditor(button, editing) {
+      const section = button.closest('section');
+      const form = section.querySelector('[data-document-editor]');
+      form.reset(); section.querySelector('[data-document-feedback]').textContent = '';
+      form.classList.toggle('hidden', !editing);
+      section.querySelector('[data-document-links]').classList.toggle('hidden', editing);
+      if (editing) form.querySelector('input').focus();
+    }
+
+    async function saveApplicationDocumentLinks(id, links) {
+      const app = applications.find(item => item.id === id);
+      if (!app) throw new Error('This application no longer exists.');
+      Object.assign(app, links); persistData(); renderKanban(); renderSheet(); renderDashboard();
+    }
+
+    async function saveDocumentLinks(event) {
+      event.preventDefault();
+      const form = event.currentTarget, section = form.closest('section');
+      const feedback = form.querySelector('[data-document-feedback]');
+      const buttons = section.querySelectorAll('button');
+      try {
+        const links = {resumeUrl: validateDocumentLink(form.elements.resumeUrl.value), coverLetterUrl: validateDocumentLink(form.elements.coverLetterUrl.value)};
+        buttons.forEach(button => button.disabled = true);
+        await saveApplicationDocumentLinks(section.dataset.applicationId, links);
+        if (section.isConnected && !document.getElementById('details-modal').classList.contains('hidden')) showDetailsModal(section.dataset.applicationId);
+        showToast('Document links saved');
+      } catch (error) { if (section.isConnected) feedback.textContent = error.message; }
+      finally { buttons.forEach(button => button.disabled = false); }
+    }
+
+    function showDetailsModal(appId) {
+      const app = applications.find(a => a.id === appId);
+      if (!app) return;
+
+      document.getElementById('detail-company').textContent = app.company;
+      document.getElementById('detail-title').textContent = app.jobTitle;
+
+      const container = document.getElementById('detail-content');
+      container.innerHTML = `
+        <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+          <div>
+            <span class="text-[11px] font-semibold text-slate-400 uppercase">Status</span>
+            <p class="font-bold text-slate-900 mt-0.5">${escapeHtml(app.status)}</p>
+          </div>
+          <div>
+            <span class="text-[11px] font-semibold text-slate-400 uppercase">Date Logged</span>
+            <p class="font-medium text-slate-800 mt-0.5">${escapeHtml(app.dateApplied || 'None')}</p>
+          </div>
+          <div>
+            <span class="text-[11px] font-semibold text-slate-400 uppercase">Location & Mode</span>
+            <p class="font-medium text-slate-800 mt-0.5">${escapeHtml(app.location || '-')} (${escapeHtml(app.workType)})</p>
+          </div>
+          <div>
+            <span class="text-[11px] font-semibold text-slate-400 uppercase">Comp / Salary</span>
+            <p class="font-medium text-slate-800 mt-0.5">${escapeHtml(app.salary || 'Not specified')}</p>
+          </div>
+        </div>
+
+        ${documentLinksHtml(app)}
+
+        ${app.url ? `
+          <div>
+            <span class="text-[11px] font-semibold text-slate-400 uppercase block mb-1">Job Link</span>
+            <a href="${escapeHtml(app.url)}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-800 text-xs font-semibold flex items-center gap-1.5 break-all">
+              <i class="fa-solid fa-link"></i> ${escapeHtml(app.url)}
+            </a>
+          </div>
+        ` : ''}
+
+        ${app.companyWebsite ? `
+          <div>
+            <span class="text-[11px] font-semibold text-slate-400 uppercase block mb-1">Company Website</span>
+            <a href="${escapeHtml(app.companyWebsite)}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-800 text-xs font-semibold break-all">${escapeHtml(app.companyWebsite)}</a>
+          </div>
+        ` : ''}
+
+        ${app.contact ? `
+          <div>
+            <span class="text-[11px] font-semibold text-slate-400 uppercase block mb-1">Recruiter / Contact</span>
+            <p class="text-slate-800 font-medium">${escapeHtml(app.contact)}</p>
+          </div>
+        ` : ''}
+
+        ${app.nextStep ? `
+          <div class="bg-amber-50 border border-amber-200/80 p-3 rounded-xl text-amber-900">
+            <span class="text-[11px] font-bold uppercase tracking-wider block text-amber-800 mb-0.5">Upcoming Next Action</span>
+            <p class="font-medium">${escapeHtml(app.nextStep)}</p>
+          </div>
+        ` : ''}
+
+        <div>
+          <span class="text-[11px] font-semibold text-slate-400 uppercase block mb-1">Detailed Notes</span>
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-700 whitespace-pre-wrap leading-relaxed">
+            ${escapeHtml(app.notes || 'No detailed notes logged for this entry yet.')}
+          </div>
+        </div>
+      `;
+
+      // Wire edit & delete buttons
+      document.getElementById('detail-edit-btn').onclick = () => openEditModal(app.id);
+      document.getElementById('detail-delete-btn').onclick = () => deleteJob(app.id);
+      document.getElementById('detail-doc-btn').onclick = () => createInterviewPrepDoc(app.id);
+
+      document.getElementById('details-modal').classList.remove('hidden');
+    }
+
+    function closeDetailsModal() {
+      document.getElementById('details-modal').classList.add('hidden');
+    }
+
+    // Helper: Escaping HTML to prevent XSS
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function exportLegacyJSON() {
+      const blob = new Blob([JSON.stringify({version: 1, applications, settings: {googleSyncUrl}}, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url; link.download = 'careerforge-backup.json'; link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function exportToCSV() {
+      if (applications.length === 0) {
+        showToast('No applications to export', 'error');
+        return;
+      }
+      const headers = ['ID', 'Job Title', 'Company', 'Status', 'Date Applied', 'Location', 'Work Type', 'Salary', 'Source', 'URL', 'Contact', 'Next Step', 'Notes', 'Company Website', 'Resume used', 'Cover letter used'];
+      const rows = applications.map(app => [
+        app.id,
+        `"${(app.jobTitle || '').replace(/"/g, '""')}"`,
+        `"${(app.company || '').replace(/"/g, '""')}"`,
+        `"${(app.status || '').replace(/"/g, '""')}"`,
+        `"${(app.dateApplied || '').replace(/"/g, '""')}"`,
+        `"${(app.location || '').replace(/"/g, '""')}"`,
+        `"${(app.workType || '').replace(/"/g, '""')}"`,
+        `"${(app.salary || '').replace(/"/g, '""')}"`,
+        `"${(app.source || '').replace(/"/g, '""')}"`,
+        `"${(app.url || '').replace(/"/g, '""')}"`,
+        `"${(app.contact || '').replace(/"/g, '""')}"`,
+        `"${(app.nextStep || '').replace(/"/g, '""')}"`,
+        `"${(app.notes || '').replace(/"/g, '""')}"`,
+        `"${(app.companyWebsite || '').replace(/"/g, '""')}"`,
+        `"${(app.resumeUrl || '').replace(/"/g, '""')}"`,
+        `"${(app.coverLetterUrl || '').replace(/"/g, '""')}"`,
+      ]);
+
+      const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+      const encodedUri = URL.createObjectURL(new Blob([csvContent], {type: 'text/csv;charset=utf-8'}));
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `job_applications_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(encodedUri), 1000);
+      showToast('Exported CSV file successfully!');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updateSyncStatusUI();
+      renderKanban();
+      renderSheet();
+      renderDashboard();
+    });
+  </script>
+  <script src="discover.js"></script>
+</body>
+</html>
