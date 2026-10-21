@@ -1203,6 +1203,9 @@ Next Step: ${app.nextStep || 'Follow up'}`;
                 <button onclick="openEditModal('${app.id}')" title="Edit" class="text-slate-400 hover:text-indigo-600 p-1 text-xs">
                   <i class="fa-solid fa-pen"></i>
                 </button>
+                <button type="button" onclick="deleteJob('${app.id}')" title="Delete application" aria-label="Delete application" class="text-slate-400 hover:text-rose-600 p-1 text-xs">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
               </div>
             </div>
 
@@ -1728,7 +1731,13 @@ Next Step: ${app.nextStep || 'Follow up'}`;
       renderDashboard();
     }
 
+    function confirmDeleteJob(appId) {
+      const app = applications.find(a => a.id === appId);
+      return !!app && window.confirm(`Delete "${app.jobTitle}" at ${app.company}? This permanently removes the saved application.`);
+    }
+
     function deleteJob(appId) {
+      if (!confirmDeleteJob(appId)) return;
       const app = applications.find(a => a.id === appId);
       const companyName = app ? app.company : 'job';
       applications = applications.filter(a => a.id !== appId);

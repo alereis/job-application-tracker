@@ -35,6 +35,7 @@ if (location.protocol !== 'file:') {
     catch (e) { report(e); refreshTracker(); }
   };
   deleteJob = async function(id) {
+    if (!confirmDeleteJob(id)) return;
     try { requireReady(); await api('/applications/' + encodeURIComponent(id), {method: 'DELETE'}); await reloadTracker(); closeDetailsModal(); showToast('Application removed'); }
     catch (e) { report(e); }
   };
